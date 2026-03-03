@@ -1,1 +1,127 @@
 
+#include <iostream>
+#include <vector>
+
+struct RLE_Pair {
+    int count;
+    int value;
+};
+
+// Encode
+
+std::vector<RLE_Pair> rle_encode(const std::vector<int>& data) {
+    std::vector<RLE_Pair> encoded;
+    if (data.empty()) return encoded;
+
+    int count = 1;
+    int current = data[0];
+
+    for (size_t i = 1; i < data.size(); ++i) {
+        if (data[i] == current && count < 255) {
+            count++;
+        } else {
+
+            //  Եթե value > 255 → բաժանում ենք
+            if (current > 255) {
+                int temp = current;
+                while (temp > 255) {
+                    encoded.push_back({1, 255});
+                    temp -= 255;
+                }
+                encoded.push_back({1, temp});
+            } 
+            else {
+                encoded.push_back({count, current});
+            }
+
+            current = data[i];
+            count = 1;
+        }
+    }
+
+    // Վերջին տարրը
+    if (current > 255) {
+        int temp = current;
+        while (temp > 255) {
+            encoded.push_back({1, 255});
+            temp -= 255;
+        }
+        encoded.push_back({1, temp});
+    } 
+    else {
+        encoded.push_back({count, current});
+    }
+
+    return encoded;
+}
+// Decode
+
+std::vector<int> rle_decode(const std::vector<RLE_Pair>& encoded) {
+    std::vector<int> decoded;
+    int accumulator = 0;
+
+    for (const auto& p : encoded) {
+
+        if (p.count == 1 && p.value == 255) {
+            accumulator += 255;
+        }
+        else if (p.count == 1 && accumulator > 0) {
+            accumulator += p.value;
+            decoded.push_back(accumulator);
+            accumulator = 0;
+        }
+        else {
+            for (int i = 0; i < p.count; ++i) {
+                decoded.push_back(p.value);
+            }
+        }
+    }
+
+    return decoded;
+}
+
+// MAIN
+
+int main() {
+    int n;
+    std::cout << "Քանի՞ տարր եք ցանկանում մուտքագրել զանգվածում: ";
+    std::cin >> n;
+
+    if (n <= 0) {
+        std::cout << "Զանգվածը դատարկ է.\n";
+        return 0;
+    }
+
+    std::vector<int> original(n);
+
+    std::cout << "Մուտքագրեք " << n << " տարրերը:\n>> ";
+    for (int i = 0; i < n; ++i) {
+        std::cin >> original[i];
+    }
+
+    // Encode
+    std::vector<RLE_Pair> encoded = rle_encode(original);
+
+    std::cout << "\n[ ENCODE ]\n";
+    for (const auto& p : encoded) {
+        std::cout << "[" << p.count << "," << p.value << "] ";
+    }
+    std::cout << "\n";
+
+    // Decode
+    std::vector<int> decoded = rle_decode(encoded);
+
+    std::cout << "\n[ DECODE ]\n";
+    for (int x : decoded) {
+        std::cout << x << " ";
+    }
+
+    // Ստուգում
+    std::cout << "\n\n[ ՍՏՈՒԳՈՒՄ ] ";
+    if (original == decoded)
+        std::cout << "ԱՅՈ ";
+    else
+        std::cout << "ՈՉ" ;
+
+    return 0;
+}
