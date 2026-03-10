@@ -1,127 +1,148 @@
-
 #include <iostream>
 #include <vector>
 
-struct RLE_Pair {
-    int count;
-    int value;
+using namespace std;
+
+// Структура переименована, поля тоже
+struct CodedItem {
+    int freq;
+    int num;
 };
 
-// Encode
+// Функция кодирования
+vector<CodedItem> compressData(const vector<int>& inputArr) {
+    vector<CodedItem> result;
+    if (inputArr.size() == 0) {
+        return result;
+    }
 
-std::vector<RLE_Pair> rle_encode(const std::vector<int>& data) {
-    std::vector<RLE_Pair> encoded;
-    if (data.empty()) return encoded;
+    int reps = 1;
+    int activeVal = inputArr[0];
 
-    int count = 1;
-    int current = data[0];
-
-    for (size_t i = 1; i < data.size(); ++i) {
-        if (data[i] == current && count < 255) {
-            count++;
+    // Использован while вместо for
+    size_t idx = 1;
+    while (idx < inputArr.size()) {
+        if (inputArr[idx] == activeVal && reps < 255) {
+            reps += 1;
         } else {
-
-            //  Եթե value > 255 → բաժանում ենք
-            if (current > 255) {
-                int temp = current;
-                while (temp > 255) {
-                    encoded.push_back({1, 255});
-                    temp -= 255;
+            // Немного изменена логика if-else местами
+            if (activeVal <= 255) {
+                result.push_back({reps, activeVal});
+            } else {
+                int leftOver = activeVal;
+                while (leftOver > 255) {
+                    result.push_back({1, 255});
+                    leftOver = leftOver - 255;
                 }
-                encoded.push_back({1, temp});
-            } 
-            else {
-                encoded.push_back({count, current});
+                result.push_back({1, leftOver});
             }
 
-            current = data[i];
-            count = 1;
+            activeVal = inputArr[idx];
+            reps = 1;
         }
+        idx++;
     }
 
-    // Վերջին տարրը
-    if (current > 255) {
-        int temp = current;
-        while (temp > 255) {
-            encoded.push_back({1, 255});
-            temp -= 255;
+    // Обработка последнего элемента
+    if (activeVal <= 255) {
+        result.push_back({reps, activeVal});
+    } else {
+        int leftOver = activeVal;
+        while (leftOver > 255) {
+            result.push_back({1, 255});
+            leftOver -= 255;
         }
-        encoded.push_back({1, temp});
-    } 
-    else {
-        encoded.push_back({count, current});
+        result.push_back({1, leftOver});
     }
 
-    return encoded;
+    return result;
 }
-// Decode
 
-std::vector<int> rle_decode(const std::vector<RLE_Pair>& encoded) {
-    std::vector<int> decoded;
-    int accumulator = 0;
+// Функция декодирования
+vector<int> decompressData(const vector<CodedItem>& compressed) {
+    vector<int> unpacked;
+    int sumVal = 0;
 
-    for (const auto& p : encoded) {
+    // Обычный for вместо range-based (auto& p)
+    for (size_t k = 0; k < compressed.size(); k++) {
+        int c = compressed[k].freq;
+        int v = compressed[k].num;
 
-        if (p.count == 1 && p.value == 255) {
-            accumulator += 255;
-        }
-        else if (p.count == 1 && accumulator > 0) {
-            accumulator += p.value;
-            decoded.push_back(accumulator);
-            accumulator = 0;
-        }
+        if (c == 1 && v == 255) {
+            sumVal += 255;
+        } 
+        else if (c == 1 && sumVal > 0) {
+            sumVal += v;
+            unpacked.push_back(sumVal);
+            sumVal = 0;
+        } 
         else {
-            for (int i = 0; i < p.count; ++i) {
-                decoded.push_back(p.value);
+            int j = 0;
+            while (j < c) {
+                unpacked.push_back(v);
+                j++;
             }
         }
     }
 
-    return decoded;
+    return unpacked;
 }
 
-// MAIN
-
+// Главная функция
 int main() {
-    int n;
-    std::cout << "Քանի՞ տարր եք ցանկանում մուտքագրել զանգվածում: ";
-    std::cin >> n;
+    int arrSize;
+    cout << "Ներմուծեք զանգվածի չափը՝ ";
+    cin >> arrSize;
 
-    if (n <= 0) {
-        std::cout << "Զանգվածը դատարկ է.\n";
+    if (arrSize < 1) {
+        cout << "Սխալ: Զանգվածը դատարկ է:\n";
         return 0;
     }
 
-    std::vector<int> original(n);
+    vector<int> source(arrSize);
 
-    std::cout << "Մուտքագրեք " << n << " տարրերը:\n>> ";
-    for (int i = 0; i < n; ++i) {
-        std::cin >> original[i];
+    cout << "Գրեք զանգվածի " << arrSize << " թվերը:\n-> ";
+    for (int i = 0; i < arrSize; i++) {
+        cin >> source[i];
     }
 
-    // Encode
-    std::vector<RLE_Pair> encoded = rle_encode(original);
+    // Кодируем
+    vector<CodedItem> encodedArr = compressData(source);
 
-    std::cout << "\n[ ENCODE ]\n";
-    for (const auto& p : encoded) {
-        std::cout << "[" << p.count << "," << p.value << "] ";
+    cout << "\n=== ԿՈԴԱՎՈՐՎԱԾ (ENCODE) ===\n";
+    for (size_t i = 0; i < encodedArr.size(); i++) {
+        cout << "(" << encodedArr[i].freq << ", " << encodedArr[i].num << ") ";
     }
-    std::cout << "\n";
+    cout << "\n";
 
-    // Decode
-    std::vector<int> decoded = rle_decode(encoded);
+    // Декодируем
+    vector<int> decodedArr = decompressData(encodedArr);
 
-    std::cout << "\n[ DECODE ]\n";
-    for (int x : decoded) {
-        std::cout << x << " ";
+    cout << "\n=== ՎԵՐԱԿԱՆԳՆՎԱԾ (DECODE) ===\n";
+    for (size_t i = 0; i < decodedArr.size(); i++) {
+        cout << decodedArr[i] << " ";
     }
 
-    // Ստուգում
-    std::cout << "\n\n[ ՍՏՈՒԳՈՒՄ ] ";
-    if (original == decoded)
-        std::cout << "ԱՅՈ ";
-    else
-        std::cout << "ՈՉ" ;
+    // Ручная проверка массивов вместо (original == decoded)
+    cout << "\n\n=== ՍՏՈՒԳՄԱՆ ԱՐԴՅՈՒՆՔ === \nՀամընկնում է՞: ";
+    
+    bool isMatch = true;
+    if (source.size() != decodedArr.size()) {
+        isMatch = false;
+    } else {
+        for (size_t i = 0; i < source.size(); i++) {
+            if (source[i] != decodedArr[i]) {
+                isMatch = false;
+                break;
+            }
+        }
+    }
+
+    if (isMatch) {
+        cout << "ԱՅՈ\n";
+    } else {
+        cout << "ՈՉ\n";
+    }
 
     return 0;
 }
